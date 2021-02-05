@@ -1,13 +1,11 @@
-
 library(fbRanks)
 library(dplyr)
 library(ggplot2)
 
 
-
-# Colocar el directorio de trabajo segÃºn corresponda
-
+# Directorio de trabajo
 setwd("C:/Users/saman/Documents/Sami/BEDU/R/Sesion-08/Postwork")
+
 # Descarga de archivos
 # https://www.football-data.co.uk/spainm.php
 
@@ -33,14 +31,9 @@ download.file(url = u1617, destfile ="SP1-1617.csv", mode = "wb")
 download.file(url = u1718, destfile ="SP1-1718.csv", mode = "wb")
 download.file(url = u1819, destfile ="SP1-1819.csv", mode = "wb")
 download.file(url = u1920, destfile ="SP1-1920.csv", mode = "wb")
+
 # Lectura de datos
-
-lista <- lapply(list.files(path = RawData), read.csv)
-
 # Procesamiento de datos
-
-lista <- lapply(lista, select, Date:FTR)
-
 d1011 <- read.csv("SP1-1011.csv")
 d1112 <- read.csv("SP1-1112.csv")
 d1213 <- read.csv("SP1-1213.csv")
@@ -63,7 +56,6 @@ d1718S <- select(d1718, Date:FTAG, BbMx.2.5:BbAv.2.5.1)
 d1819S <- select(d1819, Date:FTAG, BbMx.2.5:BbAv.2.5.1)
 d1920S <- select(d1920, Date:FTAG, Max.2.5:Avg.2.5.1)
 d1920S <- select(d1920S, -Time)
-#colnames(d1718S); colnames(d1819S); colnames(d1920S)
 
 # Arreglamos las fechas
 d1011S <- mutate(d1011S, Date = as.Date(Date, format = "%d/%m/%y"))
@@ -78,10 +70,9 @@ d1819S <- mutate(d1819S, Date = as.Date(Date, format = "%d/%m/%Y"))
 d1920S <- mutate(d1920S, Date = as.Date(Date, format = "%d/%m/%Y"))
 
 # Unimos de d1415S a d1819S
-
 d1019S <- rbind(d1011S, d1112S, d1213S, d1314S, d1415S, d1516S, d1617S, d1718S, d1819S)
-# Renombrar columnas
 
+# Renombrar columnas
 d1019S <- rename(d1019S,  Max.2.5.O = BbMx.2.5, 
                  Avg.2.5.O = BbAv.2.5, 
                  Max.2.5.U = BbMx.2.5.1,
@@ -93,24 +84,19 @@ d1920S <- rename(d1920S,  Max.2.5.O = Max.2.5,
                  Avg.2.5.U = Avg.2.5.1)
 
 # Ordenamos las columnas
-
 d1019S <- select(d1019S, colnames(d1920S))
 
 # Volvemos a unir
-
 d1020S <- rbind(d1019S, d1920S)
 
 # Renombramos
-
 d1020S <- rename(d1020S, date = Date, home.team = HomeTeam, home.score = FTHG, away.team = AwayTeam, away.score = FTAG)
 
 # Ordenamos columnas
-
 data <- select(d1020S, date, home.team, home.score, away.team, away.score:Avg.2.5.U) # Este data frame contiene todos los datos necesarios
 head(data, n = 2L); tail(data, n = 2L)
 
 # Data frames de partidos y equipos
-
 md <- data %>% select(date:away.score)
 write.csv(md, "match.data.csv", row.names = FALSE)
 df <- create.fbRanks.dataframes(scores.file = "match.data.csv")
@@ -118,25 +104,21 @@ teams <- df$teams; scores <- df$scores
 head(teams, n = 2L); dim(teams); head(scores, n = 2L); dim(scores)
 
 # Conjuntos iniciales de entrenamiento y de prueba
-
 f <- scores$date # Fechas de partidos
-fu <- unique(f) # Fechas sin repeticiÃ³n
-Ym <- format(fu, "%Y-%m") # Meses y aÃ±os
-Ym <- unique(Ym) # Meses y aÃ±os sin repetir
+fu <- unique(f) # Fechas sin repeticion
+Ym <- format(fu, "%Y-%m") # Meses y anios
+Ym <- unique(Ym) # Meses y anios sin repetir
 places <- which(Ym[15]==format(scores$date, "%Y-%m")) # Consideramos partidos de 15 meses para comenzar a ajustar el modelo
 ffe <- scores$date[max(places)] # Fecha final conjunto de entrenamiento
 
-#Consideraremos partidos de 15 meses para comenzar a ajustar el modelo. AsÃ­, nuestro primer conjunto de entrenamiento consiste de datos de partidos hasta el `r ffe` 
-
+#Consideraremos partidos de 15 meses para comenzar a ajustar el modelo. Asi, nuestro primer conjunto de entrenamiento consiste de datos de partidos hasta el `r ffe` 
 train <- scores %>% filter(date <= ffe)
 test <- scores %>% filter(date > ffe)
-
 
 head(train, n = 1); tail(train, n = 1)
 head(test, n = 1); tail(test, n = 1)
 
 # Primer ajuste del modelo
-
 traindate <- unique(train$date)
 testdate <- unique(test$date)
 
@@ -145,7 +127,7 @@ ranks <- rank.teams(scores = scores, teams = teams,
                     min.date = traindate[1], 
                     max.date = traindate[length(traindate)])
 
-# Primera predicciÃ³n
+# Primera prediccion
 pred <- predict(ranks, date = testdate[1])
 phs <- pred$scores$pred.home.score # predicted home score
 pas <- pred$scores$pred.away.score # predicted away score
@@ -153,7 +135,6 @@ pht <- pred$scores$home.team # home team in predictions
 pat <- pred$scores$away.team # away team in predictions
 
 # Continuar ajustando y prediciendo
-
 phs <- NULL; pas <- NULL; pht <- NULL; pat <- NULL
 for(i in 1:(length(unique(scores$date))-170)){
   ranks <- rank.teams(scores = scores, teams = teams, 
@@ -169,8 +150,8 @@ for(i in 1:(length(unique(scores$date))-170)){
   pht <- c(pht, pred$scores$home.team) # home team in predictions
   pat <- c(pat, pred$scores$away.team) # away team in predictions
 }
-# Eliminamos NA's
 
+# Eliminamos NA's
 buenos <- !(is.na(phs) | is.na(pas)) # 
 phs <- phs[buenos] # predicted home score
 pas <- pas[buenos] # predicted away score
@@ -185,14 +166,14 @@ hs <- momio$home.score
 as <- momio$away.score
 
 # Probabilidades condicionales
-mean(phs + pas > 3) # proporciÃ³n de partidos con mÃ¡s de tres goles segÃºn el modelo
+mean(phs + pas > 3) # proporcion de partidos con mas de tres goles segun el modelo
 mean(phs + pas > 3 & hs + as > 2.5)/mean(phs + pas > 3) 
 # probabilidad condicional estimada de ganar en over 2.5
-mean(phs + pas < 2.1) # proporciÃ³n de partidos con menos de 2.1 goles segÃºn el modelo
+mean(phs + pas < 2.1) # proporcion de partidos con menos de 2.1 goles segun el modelo
 mean(phs + pas < 2.1 & hs + as < 2.5)/mean(phs + pas < 2.1) 
 # probabilidad condicional estimada de ganar en under 2.5
 
-# Apuestas con momios mÃ¡ximos
+# Apuestas con momios maximos
 cap <- 50000; g <- NULL
 
 for(j in 1:length(phs)){
@@ -209,7 +190,7 @@ for(j in 1:length(phs)){
   }
 }
 
-# Escenario con momios mÃ¡ximos
+# Escenario con momios maximos
 g <- data.frame(Num_Ap = 1:length(g), Capital = g)
 p <- ggplot(g, aes(x=Num_Ap, y=Capital)) + geom_line( color="purple") + geom_point() +
   labs(x = "Numero de Apuesta", 
@@ -217,7 +198,7 @@ p <- ggplot(g, aes(x=Num_Ap, y=Capital)) + geom_line( color="purple") + geom_poi
        title = "Realizando una secuencia de apuestas") +
   theme(plot.title = element_text(size=12))  +
   theme(axis.text.x = element_text(face = "bold", color="blue" , size = 10, angle = 25, hjust = 1),
-        axis.text.y = element_text(face = "bold", color="blue" , size = 10, angle = 25, hjust = 1))  # color, Ã¡ngulo y estilo de las abcisas y ordenadas 
+        axis.text.y = element_text(face = "bold", color="blue" , size = 10, angle = 25, hjust = 1))  # color, angulo y estilo de las abcisas y ordenadas 
 p
 
 # Escenario con momios promedio
@@ -244,5 +225,5 @@ p <- ggplot(g, aes(x=Num_Ap, y=Capital)) + geom_line( color="purple") + geom_poi
        title = "Realizando una secuencia de apuestas") +
   theme(plot.title = element_text(size=12))  +
   theme(axis.text.x = element_text(face = "bold", color="blue" , size = 10, angle = 25, hjust = 1),
-        axis.text.y = element_text(face = "bold", color="blue" , size = 10, angle = 25, hjust = 1))  # color, Ã¡ngulo y estilo de las abcisas y ordenadas 
+        axis.text.y = element_text(face = "bold", color="blue" , size = 10, angle = 25, hjust = 1))  # color, ÃÂ¡ngulo y estilo de las abcisas y ordenadas 
 p
